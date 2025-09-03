@@ -1,0 +1,42 @@
+spec:
+  container:
+    - name: frontend
+      image: /sql_query_app/repository/sql_query_frontend:latest
+      resources:
+        requests:
+          memory: 512Mi
+          cpu: 0.5
+        limits:
+          memory: 1Gi
+          cpu: 1
+    - name: backend
+      image: /sql_query_app/repository/sql_query_backend:latest
+      env:
+        SNOWFLAKE_ACCOUNT: !get_env SNOWFLAKE_ACCOUNT
+        SNOWFLAKE_USERNAME: !get_env SNOWFLAKE_USERNAME
+        SNOWFLAKE_PASSWORD: !get_env SNOWFLAKE_PASSWORD
+        SNOWFLAKE_DATABASE: !get_env SNOWFLAKE_DATABASE
+        SNOWFLAKE_SCHEMA: !get_env SNOWFLAKE_SCHEMA
+        SNOWFLAKE_WAREHOUSE: !get_env SNOWFLAKE_WAREHOUSE
+        SNOWFLAKE_ROLE: !get_env SNOWFLAKE_ROLE
+        NODE_ENV: production
+      resources:
+        requests:
+          memory: 512Mi
+          cpu: 0.5
+        limits:
+          memory: 1Gi
+          cpu: 1
+      readinessProbe:
+        port: 3001
+        path: /api/health
+      livenessProbe:
+        port: 3001
+        path: /api/health
+  endpoint:
+    - name: frontend
+      port: 80
+      public: true
+    - name: backend
+      port: 3001
+      public: false
