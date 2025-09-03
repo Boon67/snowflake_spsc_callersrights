@@ -192,6 +192,13 @@ app.get('/api/info', async (req, res) => {
     connection = createConnection();
     await connectToSnowflake(connection);
     
+    // Explicitly set database and schema context
+    const database = process.env.SNOWFLAKE_DATABASE || 'SQL_QUERY_APP_DB';
+    const schema = process.env.SNOWFLAKE_SCHEMA || 'PUBLIC';
+    
+    await executeQuery(connection, `USE DATABASE ${database}`, false);
+    await executeQuery(connection, `USE SCHEMA ${schema}`, false);
+    
     const result = await executeQuery(connection, 
       'SELECT CURRENT_USER() as USER, CURRENT_ROLE() as ROLE, CURRENT_DATABASE() as DATABASE, CURRENT_SCHEMA() as SCHEMA, CURRENT_WAREHOUSE() as WAREHOUSE'
     );
@@ -258,6 +265,14 @@ app.post('/api/execute', async (req, res) => {
     console.log('Connection object created, attempting to connect to Snowflake...');
     await connectToSnowflake(connection);
     console.log('Successfully connected to Snowflake');
+    
+    // Explicitly set database and schema context
+    const database = process.env.SNOWFLAKE_DATABASE || 'SQL_QUERY_APP_DB';
+    const schema = process.env.SNOWFLAKE_SCHEMA || 'PUBLIC';
+    
+    console.log(`Setting database context to: ${database}.${schema}`);
+    await executeQuery(connection, `USE DATABASE ${database}`, false);
+    await executeQuery(connection, `USE SCHEMA ${schema}`, false);
     
     // Set query tag to indicate execution mode
     const queryTag = actualUseCallersRights ? 'CALLERS_RIGHTS_EXECUTION' : 'OWNERS_RIGHTS_EXECUTION';

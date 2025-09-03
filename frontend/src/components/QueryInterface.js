@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import axios from 'axios';
 
 const QueryInterface = () => {
-  const [query, setQuery] = useState('-- Try these example queries:\n-- SELECT CURRENT_USER(), CURRENT_ROLE(), CURRENT_DATABASE(), CURRENT_SCHEMA();\n-- SELECT * FROM SAMPLE_DATA LIMIT 10;\n-- SELECT * FROM EMPLOYEE_SUMMARY;\n\nSELECT CURRENT_USER(), CURRENT_ROLE(), CURRENT_DATABASE(), CURRENT_SCHEMA();');
+  const [query, setQuery] = useState('-- Try these example queries:\n-- SELECT CURRENT_USER(), CURRENT_ROLE(), CURRENT_DATABASE(), CURRENT_SCHEMA();\n-- SELECT * FROM SAMPLE_DATA LIMIT 10;\n-- SELECT * FROM EMPLOYEE_SUMMARY;\n\nselect current_database(), current_schema(), current_warehouse();');
   const [results, setResults] = useState(null);
   const [error, setError] = useState(null);
   const [loading, setLoading] = useState(false);

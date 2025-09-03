@@ -212,15 +212,15 @@ push_images() {
 build_and_push_images() {
     print_status "Building and pushing current application images..."
     
-    # Build frontend v2
-    print_status "Building frontend image (v2)..."
+    # Build frontend image
+    print_status "Building frontend image..."
     cd frontend
-    docker build --platform linux/amd64 -t sfsenorthamerica-tboon-aws2.registry.snowflakecomputing.com/sql_query_app_db/public/sql_query_app/sql_query_frontend:v2 .
+    docker build --platform linux/amd64 -t sfsenorthamerica-tboon-aws2.registry.snowflakecomputing.com/sql_query_app_db/public/sql_query_app/sql_query_frontend:latest .
     
-    # Build backend v4 
-    print_status "Building backend image (v4)..."
+    # Build backend image
+    print_status "Building backend image..."
     cd ../backend
-    docker build --platform linux/amd64 -t sfsenorthamerica-tboon-aws2.registry.snowflakecomputing.com/sql_query_app_db/public/sql_query_app/sql_query_backend:v4 .
+    docker build --platform linux/amd64 -t sfsenorthamerica-tboon-aws2.registry.snowflakecomputing.com/sql_query_app_db/public/sql_query_app/sql_query_backend:latest .
     cd ..
     
     # Login to Snowflake registry
@@ -229,10 +229,10 @@ build_and_push_images() {
     
     # Push images
     print_status "Pushing frontend image..."
-    docker push sfsenorthamerica-tboon-aws2.registry.snowflakecomputing.com/sql_query_app_db/public/sql_query_app/sql_query_frontend:v2
+    docker push sfsenorthamerica-tboon-aws2.registry.snowflakecomputing.com/sql_query_app_db/public/sql_query_app/sql_query_frontend:latest
     
     print_status "Pushing backend image..."
-    docker push sfsenorthamerica-tboon-aws2.registry.snowflakecomputing.com/sql_query_app_db/public/sql_query_app/sql_query_backend:v4
+    docker push sfsenorthamerica-tboon-aws2.registry.snowflakecomputing.com/sql_query_app_db/public/sql_query_app/sql_query_backend:latest
     
     print_success "Images built and pushed successfully"
 }
@@ -257,40 +257,50 @@ deploy_service() {
         exit 1
     fi
     
-    # Generate the service specification inline (no temp files)
-    local service_spec="spec:
-  container:
-    - name: frontend
-      image: sfsenorthamerica-tboon-aws2.registry.snowflakecomputing.com/sql_query_app_db/public/sql_query_app/sql_query_frontend:v2
-      resources:
-        requests:
-          memory: 512Mi
-          cpu: 0.5
-        limits:
-          memory: 1Gi
-          cpu: 1
-    - name: backend
-      image: sfsenorthamerica-tboon-aws2.registry.snowflakecomputing.com/sql_query_app_db/public/sql_query_app/sql_query_backend:v4
-      env:
-        SNOWFLAKE_DATABASE: SQL_QUERY_APP_DB
-        SNOWFLAKE_SCHEMA: PUBLIC
-        SNOWFLAKE_WAREHOUSE: COMPUTE_WH
-        SNOWFLAKE_ROLE: DOCUMENT_PROCESSOR
-        NODE_ENV: production
-      resources:
-        requests:
-          memory: 512Mi
-          cpu: 0.5
-        limits:
-          memory: 1Gi
-          cpu: 1
-  endpoint:
-    - name: frontend
-      port: 80
-      public: true
-    - name: backend
-      port: 3001
-      public: false"
+         # Create a temporary service specification file
+     local temp_spec="/tmp/service_spec_$$.yml"
+     cat > "$temp_spec" << 'EOF'
+spec:
+  containers:
+  - name: "frontend"
+    image: "sfsenorthamerica-tboon-aws2.registry.snowflakecomputing.com/sql_query_app_db/public/sql_query_app/sql_query_frontend:latest"
+    resources:
+      limits:
+        memory: "1Gi"
+        cpu: "1"
+      requests:
+        memory: "512Mi"
+        cpu: "0.5"
+  - name: "backend"
+    image: "sfsenorthamerica-tboon-aws2.registry.snowflakecomputing.com/sql_query_app_db/public/sql_query_app/sql_query_backend:latest"
+    env:
+      SNOWFLAKE_DATABASE: "SQL_QUERY_APP_DB"
+      SNOWFLAKE_SCHEMA: "PUBLIC"
+      SNOWFLAKE_WAREHOUSE: "COMPUTE_WH"
+      SNOWFLAKE_ROLE: "DOCUMENT_PROCESSOR"
+      NODE_ENV: "production"
+    resources:
+      limits:
+        memory: "1Gi"
+        cpu: "1"
+      requests:
+        memory: "512Mi"
+        cpu: "0.5"
+  endpoints:
+  - name: "frontend"
+    port: 80
+    public: true
+  - name: "backend"
+    port: 3001
+    public: false
+serviceRoles:
+- name: "QUERY_EXECUTOR"
+  endpoints:
+  - "frontend"
+capabilities:
+  securityContext:
+    executeAsCaller: true
+EOF
     
     # Check if service already exists
     print_status "Checking if service already exists..."
@@ -307,7 +317,7 @@ deploy_service() {
         USE SCHEMA ${SCHEMA_NAME};
         ALTER SERVICE ${SERVICE_NAME}
         FROM SPECIFICATION \$\$
-        ${service_spec}
+$(cat "$temp_spec")
         \$\$;
         " --connection "$SNOW_CONNECTION"
         
@@ -325,7 +335,7 @@ deploy_service() {
         CREATE SERVICE ${SERVICE_NAME}
         IN COMPUTE POOL ${COMPUTE_POOL_NAME}
         FROM SPECIFICATION \$\$
-        ${service_spec}
+$(cat "$temp_spec")
         \$\$;
         " --connection "$SNOW_CONNECTION"
         
@@ -336,6 +346,9 @@ deploy_service() {
             exit 1
         fi
     fi
+    
+    # Clean up temporary file
+    rm -f "$temp_spec"
     
     # Monitor service provisioning
     if monitor_service_provisioning; then
