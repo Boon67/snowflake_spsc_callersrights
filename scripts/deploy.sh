@@ -393,7 +393,7 @@ monitor_service_provisioning() {
             
             if [ $? -eq 0 ] && [ -n "$endpoint_status" ]; then
                 # Check if public endpoints have URLs (not "provisioning in progress")
-                local public_endpoint_url=$(echo "$endpoint_status" | jq -r '.[] | select(.is_public == true) | .ingress_url' 2>/dev/null | grep -v "progress" | head -1)
+                local public_endpoint_url=$(echo "$endpoint_status" | jq -r '.[] | select(.is_public == "true") | .ingress_url' 2>/dev/null | grep -v "progress" | head -1)
                 
                 if [ -n "$public_endpoint_url" ] && [ "$public_endpoint_url" != "null" ] && [ "$public_endpoint_url" != "" ]; then
                     print_success "Public endpoint is ready: https://$public_endpoint_url"
