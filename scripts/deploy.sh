@@ -510,11 +510,10 @@ main() {
     check_prerequisites
     
     # Build and deploy
-    build_images
     setup_database
     create_compute_pool
     create_repository
-    push_images
+    build_and_push_images
     deploy_service
     
     # Show final summary
@@ -527,7 +526,9 @@ case "${1:-deploy}" in
         main
         ;;
     "build-only")
-        build_images
+        load_config
+        check_prerequisites
+        build_and_push_images
         ;;
     "images")
         load_config
